@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "randomflow"
+version = "0.1.0"
+description = "Flux optique de points (centre → bords) paramétrable via JSON"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pygame>=2.6.1",
+]
+
+[project.scripts]
+optical-flow = "optical_flow:main"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build]
+include = ["optical_flow.py"]

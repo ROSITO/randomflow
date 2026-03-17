@@ -1,0 +1,44 @@
+{
+  "configs": [
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.8,
+      "spawn_radius": 80,
+      "brownian_sigma": 1.2
+    },
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.6,
+      "spawn_radius": 80,
+      "brownian_sigma": 1.2
+    },
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.4,
+      "spawn_radius": 80,
+      "brownian_sigma": 1.2
+    },
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.2,
+      "spawn_radius": 80,
+      "brownian_sigma": 1.2
+    }
+  ],
+  "key_noise": "b",
+  "key_motion": "m",
+  "output_file": "responses.json",
+  "loop": 1
+}
