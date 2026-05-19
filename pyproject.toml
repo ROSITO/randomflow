@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "randomflow"
 version = "0.1.0"
-description = "Flux optique de points (centre → bords) paramétrable via JSON"
+description = "Stimulus de flux optique paramétrable (cohérence, bruit brownien/reverse) avec collecte de réponses"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

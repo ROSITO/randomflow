@@ -27,8 +27,8 @@ def load_config(config_path: str) -> dict:
         return json.load(f)
 
 
-def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int]:
-    """Charge la liste de configs + options (touches, fichier de sortie, loop)."""
+def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, int]:
+    """Charge la liste de configs + options (touches, fichier de sortie, loop, warmup)."""
     data = load_config(config_path)
     configs = data.get("configs", [])
     if not configs:
@@ -37,7 +37,8 @@ def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int]:
     key_motion = str(data.get("key_motion", "m")).lower()
     output_file = str(data.get("output_file", "responses.json"))
     loop = max(1, int(data.get("loop", 1)))
-    return configs, key_noise, key_motion, output_file, loop
+    warmup_loops = max(0, int(data.get("warmup_loops", 60)))
+    return configs, key_noise, key_motion, output_file, loop, warmup_loops
 
 
 def parse_color(color) -> tuple:
@@ -57,8 +58,25 @@ def random_point_in_circle(cx: float, cy: float, radius: float) -> tuple[float, 
     return (cx + r * math.cos(angle), cy + r * math.sin(angle))
 
 
+def max_radial_distance(cx: float, cy: float, width: int, height: int) -> float:
+    """Distance max du centre au bord de l'écran (approximation radiale symétrique)."""
+    return min(cx, width - cx, cy, height - cy)
+
+
+def random_point_on_screen_edge(width: int, height: int) -> tuple[float, float]:
+    """Point aléatoire sur le périmètre de l'écran."""
+    side = random.randint(0, 3)
+    if side == 0:
+        return random.uniform(0, width), 0.0
+    if side == 1:
+        return random.uniform(0, width), float(height)
+    if side == 2:
+        return 0.0, random.uniform(0, height)
+    return float(width), random.uniform(0, height)
+
+
 class Dot:
-    """Un point : soit fixe, soit en mouvement du centre vers le bord."""
+    """Un point : cohérent (centre → bord), brownien, ou inverse (bord → centre)."""
 
     __slots__ = ("x", "y", "vx", "vy", "moving", "angle", "speed")
 
@@ -83,13 +101,23 @@ class Dot:
         center_y: float,
         spawn_radius: float,
         brownian_sigma: float,
+        noise_mode: str,
     ) -> bool:
         """Met à jour la position. Retourne True si le point est encore visible."""
         if not self.moving:
-            # Mouvement brownien (bruit) pour les points immobiles
+            if noise_mode == "reverse":
+                self.x += self.vx
+                self.y += self.vy
+                dx = self.x - center_x
+                dy = self.y - center_y
+                # Disparition aléatoire dans le disque spawn_radius, puis respawn au bord
+                if dx * dx + dy * dy <= spawn_radius * spawn_radius:
+                    self.x, self.y = random_point_in_circle(center_x, center_y, spawn_radius)
+                    self._respawn_on_edge(width, height, center_x, center_y)
+                return True
+            # Mouvement brownien (bruit) pour les points non-cohérents
             self.x += random.gauss(0, brownian_sigma)
             self.y += random.gauss(0, brownian_sigma)
-            # Toroidal wrap pour garder les points à l'écran
             if width > 0:
                 self.x = self.x % width
             if height > 0:
@@ -97,15 +125,32 @@ class Dot:
             return True
         self.x += self.vx
         self.y += self.vy
+        # Concentrique : traverse tout l'écran, respawn dans spawn_radius seulement au bord
         margin = 50
-        if -margin <= self.x <= width + margin and -margin <= self.y <= height + margin:
-            return True
-        # Respawn dans le cercle, mais la vitesse reste radiale depuis le centre (comme s'il partait du centre)
+        if not (-margin <= self.x <= width + margin and -margin <= self.y <= height + margin):
+            self._respawn_coherent(center_x, center_y, spawn_radius)
+        return True
+
+    def _respawn_coherent(self, center_x: float, center_y: float, spawn_radius: float) -> None:
+        """Respawn cohérent : position aléatoire dans le disque spawn_radius,
+        vitesse radiale vers l'extérieur (comme si le point partait du centre).
+        """
         self.x, self.y = random_point_in_circle(center_x, center_y, spawn_radius)
-        self.angle = math.atan2(self.y - center_y, self.x - center_x)
+        dx = self.x - center_x
+        dy = self.y - center_y
+        if dx * dx + dy * dy < 1e-6:
+            self.angle = random.uniform(0, 2 * math.pi)
+        else:
+            self.angle = math.atan2(dy, dx)
         self.vx = self.speed * math.cos(self.angle)
         self.vy = self.speed * math.sin(self.angle)
-        return True
+
+    def _respawn_on_edge(self, width: int, height: int, center_x: float, center_y: float) -> None:
+        """Replace le point excentrique sur le bord de l'écran, vitesse vers le centre."""
+        self.x, self.y = random_point_on_screen_edge(width, height)
+        self.angle = math.atan2(center_y - self.y, center_x - self.x)
+        self.vx = self.speed * math.cos(self.angle)
+        self.vy = self.speed * math.sin(self.angle)
 
     def draw(self, surface: "pygame.Surface", color: tuple, size: int) -> None:
         pygame.draw.circle(surface, color, (int(self.x), int(self.y)), size)
@@ -118,31 +163,63 @@ def create_dots(
     dot_coherence: float,
     dot_speed: float,
     spawn_radius: float,
+    noise_mode: str = "brownian",
 ) -> list[Dot]:
     """Crée dot_number points déjà déployés sur toute la surface.
-    Seule la proportion dot_coherence (0–1) est en mouvement (vitesse radiale centre → bords).
-    Respawn des mobiles dans le cercle de rayon spawn_radius.
+    - dot_coherence : proportion mobile (centre → bord).
+    - noise_mode == "brownian" : non-mobiles ont un mouvement brownien.
+    - noise_mode == "reverse"  : non-mobiles vont en ligne droite vers le centre.
     """
     cx = width / 2
     cy = height / 2
     n_moving = max(0, min(dot_number, int(round(dot_number * dot_coherence))))
     dots = []
 
-    # Tous les points : répartition uniforme sur tout l'écran dès la frame 0
     for i in range(dot_number):
         x = random.uniform(0, width)
         y = random.uniform(0, height)
         moving = i < n_moving
-        # Vitesse radiale depuis le centre (comme s'ils partaient du centre)
-        angle = math.atan2(y - cy, x - cx) if moving else 0.0
-        dots.append(Dot(x, y, moving=moving, angle=angle, speed=dot_speed))
+        if moving:
+            angle = math.atan2(y - cy, x - cx)
+            dot = Dot(x, y, moving=True, angle=angle, speed=dot_speed)
+        elif noise_mode == "reverse":
+            ex, ey = random_point_on_screen_edge(width, height)
+            angle = math.atan2(cy - ey, cx - ex)
+            dot = Dot(ex, ey, moving=False, angle=angle, speed=dot_speed)
+            dot.vx = dot_speed * math.cos(angle)
+            dot.vy = dot_speed * math.sin(angle)
+        else:
+            dot = Dot(x, y, moving=False, angle=0.0, speed=dot_speed)
+        dots.append(dot)
 
     random.shuffle(dots)
     return dots
 
 
-def parse_single_config(config: dict) -> dict:
+def _warmup_dots(
+    dots: list[Dot],
+    width: int,
+    height: int,
+    spawn_radius: float,
+    brownian_sigma: float,
+    noise_mode: str,
+    n_loops: int,
+) -> None:
+    """Simule n_loops mises à jour sans affichage pour stabiliser la distribution des points."""
+    if n_loops <= 0:
+        return
+    cx, cy = width / 2, height / 2
+    for _ in range(n_loops):
+        for dot in dots:
+            dot.update(width, height, cx, cy, spawn_radius, brownian_sigma, noise_mode)
+        pygame.event.pump()
+
+
+def parse_single_config(config: dict, default_warmup_loops: int = 60) -> dict:
     """Extrait et normalise les paramètres d'une config pour l'affichage."""
+    noise_mode = str(config.get("noise_mode", "brownian")).lower()
+    if noise_mode not in ("brownian", "reverse"):
+        noise_mode = "brownian"
     return {
         "dot_size": int(config.get("dot_size", 4)),
         "dot_speed": float(config.get("dot_speed", 2.0)),
@@ -151,6 +228,8 @@ def parse_single_config(config: dict) -> dict:
         "dot_coherence": max(0.0, min(1.0, float(config.get("dot_coherence", 0.8)))),
         "spawn_radius": max(1.0, float(config.get("spawn_radius", 80))),
         "brownian_sigma": max(0.0, float(config.get("brownian_sigma", 1.2))),
+        "noise_mode": noise_mode,
+        "warmup_loops": max(0, int(config.get("warmup_loops", default_warmup_loops))),
     }
 
 
@@ -165,7 +244,8 @@ def run_optical_flow(config_path: str = "config.json") -> None:
     info = pygame.display.Info()
     width, height = info.current_w // 2, info.current_h // 2
     pygame.display.set_mode((width, height), pygame.RESIZABLE)
-    params = parse_single_config(config)
+    default_warmup = max(0, int(config.get("warmup_loops", 60)))
+    params = parse_single_config(config, default_warmup_loops=default_warmup)
     _run_loop(
         width=width,
         height=height,
@@ -198,7 +278,10 @@ def _run_loop(
     dot_speed = params["dot_speed"]
     spawn_radius = params["spawn_radius"]
     brownian_sigma = params["brownian_sigma"]
-    dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius)
+    noise_mode = params["noise_mode"]
+    warmup_loops = params["warmup_loops"]
+    dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius, noise_mode)
+    _warmup_dots(dots, width, height, spawn_radius, brownian_sigma, noise_mode, warmup_loops)
     config_start_time = pygame.time.get_ticks()
     bg_color = (20, 20, 25)
     running = True
@@ -229,12 +312,13 @@ def _run_loop(
             if event.type == pygame.VIDEORESIZE:
                 width, height = event.w, event.h
                 screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-                dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius)
+                dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius, noise_mode)
+                _warmup_dots(dots, width, height, spawn_radius, brownian_sigma, noise_mode, warmup_loops)
 
         screen.fill(bg_color)
         cx, cy = width / 2, height / 2
         for dot in dots:
-            dot.update(width, height, cx, cy, spawn_radius, brownian_sigma)
+            dot.update(width, height, cx, cy, spawn_radius, brownian_sigma, noise_mode)
             dot.draw(screen, dot_color, dot_size)
         pygame.display.flip()
         clock.tick(60)
@@ -245,7 +329,7 @@ def run_session(config_path: str = "config.json") -> None:
     """Joue la liste de configs dans un ordre aléatoire. Touche B = bruit, M = mouvement.
     Enregistre les réponses dans le fichier JSON de sortie. Transition immédiate à la config suivante.
     """
-    configs, key_noise, key_motion, output_file, loop = load_config_list(config_path)
+    configs, key_noise, key_motion, output_file, loop, default_warmup = load_config_list(config_path)
     configs = list(configs) * loop  # répéter la liste "loop" fois
     random.shuffle(configs)
 
@@ -262,7 +346,7 @@ def run_session(config_path: str = "config.json") -> None:
 
     while running and index < len(configs):
         config = configs[index]
-        params = parse_single_config(config)
+        params = parse_single_config(config, default_warmup_loops=default_warmup)
         running, width, height = _run_loop(
             width=width,
             height=height,

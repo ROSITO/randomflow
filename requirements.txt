@@ -1,0 +1,3 @@
+# Dépendances pour installation avec pip
+# Recommandé : uv sync (voir README)
+pygame>=2.6.1

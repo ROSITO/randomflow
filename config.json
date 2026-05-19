@@ -6,8 +6,9 @@
       "dot_color": [255, 255, 255],
       "dot_number": 200,
       "dot_coherence": 0.8,
-      "spawn_radius": 80,
-      "brownian_sigma": 1.2
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "reverse"
     },
     {
       "dot_size": 4,
@@ -15,8 +16,9 @@
       "dot_color": [255, 255, 255],
       "dot_number": 200,
       "dot_coherence": 0.6,
-      "spawn_radius": 80,
-      "brownian_sigma": 1.2
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "brownian"
     },
     {
       "dot_size": 4,
@@ -24,8 +26,9 @@
       "dot_color": [255, 255, 255],
       "dot_number": 200,
       "dot_coherence": 0.4,
-      "spawn_radius": 80,
-      "brownian_sigma": 1.2
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "brownian"
     },
     {
       "dot_size": 4,
@@ -33,12 +36,54 @@
       "dot_color": [255, 255, 255],
       "dot_number": 200,
       "dot_coherence": 0.2,
-      "spawn_radius": 80,
-      "brownian_sigma": 1.2
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "brownian"
+    },
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.8,
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "reverse"
+    },
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.6,
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "reverse"
+    },
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.4,
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "reverse"
+    },
+    {
+      "dot_size": 4,
+      "dot_speed": 2.0,
+      "dot_color": [255, 255, 255],
+      "dot_number": 200,
+      "dot_coherence": 0.2,
+      "spawn_radius": 120,
+      "brownian_sigma": 1.2,
+      "noise_mode": "reverse"
     }
   ],
   "key_noise": "b",
   "key_motion": "m",
   "output_file": "responses.json",
-  "loop": 1
+  "loop": 1,
+  "warmup_loops": 200
 }
