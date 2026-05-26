@@ -4,3 +4,4 @@ __pycache__/
 *.pyo
 .python-version
 responses.json
+responses_*.json

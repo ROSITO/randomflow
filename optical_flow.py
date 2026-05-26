@@ -9,6 +9,7 @@ import json
 import math
 import random
 import sys
+from datetime import datetime
 from pathlib import Path
 
 try:
@@ -41,6 +42,14 @@ def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, 
     loop = max(1, int(data.get("loop", 1)))
     warmup_loops = max(0, int(data.get("warmup_loops", 60)))
     return configs, key_noise, key_motion, output_file, loop, warmup_loops
+
+
+def timestamped_output_path(config_path: str, output_file: str) -> Path:
+    """Construit un chemin horodaté pour éviter d'écraser les réponses précédentes."""
+    base_path = Path(config_path).parent / output_file
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = base_path.suffix or ".json"
+    return base_path.with_name(f"{base_path.stem}_{timestamp}{suffix}")
 
 
 def parse_color(color) -> tuple:
@@ -487,7 +496,7 @@ def run_session(config_path: str = "config.json") -> None:
             index += 1
 
     # Écrire le fichier de sortie
-    out_path = Path(config_path).parent / output_file
+    out_path = timestamped_output_path(config_path, output_file)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump({"trials": results}, f, indent=2, ensure_ascii=False)
     print(f"Réponses enregistrées dans {out_path} ({len(results)} essai(s)).")

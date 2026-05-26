@@ -116,7 +116,13 @@ Documentation détaillée :
 
 ## Résultats
 
-À la fin de la session, un fichier JSON (par défaut `responses.json`) contient :
+À la fin de la session, un fichier JSON horodaté est créé. Avec la valeur par défaut `responses.json`, le fichier aura par exemple ce nom :
+
+```text
+responses_20260526_125430.json
+```
+
+Il contient :
 
 ```json
 {
@@ -130,7 +136,7 @@ Documentation détaillée :
 }
 ```
 
-Ce fichier est ignoré par git (voir `.gitignore`).
+Ces fichiers sont ignorés par git (voir `.gitignore`).
 
 ## Structure du projet
 

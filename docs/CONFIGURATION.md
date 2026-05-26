@@ -20,7 +20,7 @@ Fichier principal : `config.json` à la racine du projet.
 | `configs` | liste | — | Liste des scènes à présenter (obligatoire en mode session). |
 | `key_noise` | string | `"b"` | Touche pour classer la scène comme **bruit**. |
 | `key_motion` | string | `"m"` | Touche pour classer la scène comme **mouvement**. |
-| `output_file` | string | `"responses.json"` | Fichier JSON de sortie (relatif au dossier du config). |
+| `output_file` | string | `"responses.json"` | Base du fichier JSON de sortie (relatif au dossier du config). Un timestamp est ajouté automatiquement. |
 | `loop` | entier | `1` | Nombre de passages complets sur la liste `configs` (ordre mélangé à chaque lancement). |
 | `warmup_loops` | entier | `60` | Nombre de mises à jour de simulation **sans affichage** avant chaque scène. |
 
@@ -47,7 +47,15 @@ Chaque élément de `configs` est un objet avec les champs suivants :
 - **`brownian`** : marche aléatoire (bruit), wrap toroidal aux bords.
 - **`reverse`** : naissance sur le bord de l’écran, mouvement radial vers le centre ; franchit le périmètre de `spawn_radius`, disparaît à une profondeur aléatoire dans cette aire, puis respawn au bord.
 
-## Fichier de sortie (`responses.json`)
+## Fichier de sortie (`responses_YYYYMMDD_HHMMSS.json`)
+
+Le nom indiqué par `output_file` sert de base. Par exemple, avec `"output_file": "responses.json"`, la session écrit un fichier du type :
+
+```text
+responses_20260526_125430.json
+```
+
+Cela évite d’écraser les réponses des sessions précédentes.
 
 ```json
 {
