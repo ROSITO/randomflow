@@ -35,7 +35,7 @@ Chaque élément de `configs` est un objet avec les champs suivants :
 | `dot_color` | `[R,G,B]` | `[255,255,255]` | Couleur RGB (0–255). Hex `#RRGGBB` accepté. |
 | `dot_number` | entier | `200` | Nombre total de points à l’écran. |
 | `dot_coherence` | float | `0.8` | Proportion de points **concentriques** (0.0–1.0). Le reste est du bruit (brownien ou reverse). |
-| `spawn_radius` | float | `80` | Rayon du disque central : zone d’apparition des points concentriques et de disparition des points excentriques reverse. |
+| `spawn_radius` | float | `80` | Rayon du disque central : zone d’apparition des points concentriques (distance au centre tirée uniformément dans ce rayon) et de disparition des points excentriques reverse. |
 | `brownian_sigma` | float | `1.2` | Écart-type du déplacement aléatoire par frame (mode `brownian` uniquement). |
 | `noise_mode` | string | `"brownian"` | Mode des points non cohérents : `"brownian"` ou `"reverse"`. |
 | `warmup_loops` | entier | (global) | Surcharge optionnelle du warmup pour cette scène seule. |

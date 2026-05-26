@@ -85,9 +85,14 @@ def key_matches(event: "pygame.event.Event", key_name: str | None) -> bool:
 
 
 def random_point_in_circle(cx: float, cy: float, radius: float) -> tuple[float, float]:
-    """Point aléatoire uniforme dans le disque (cx, cy) de rayon radius."""
+    """Point aléatoire dans le disque, avec distance uniforme dans le rayon.
+
+    On évite le tirage uniforme en surface (sqrt(random)) car il concentre
+    visuellement les points dans l'anneau externe, comme s'ils apparaissaient
+    sur le périmètre du spawn_radius.
+    """
     angle = random.uniform(0, 2 * math.pi)
-    r = math.sqrt(random.uniform(0, 1)) * radius  # sqrt pour distribution uniforme
+    r = random.uniform(0, radius)
     return (cx + r * math.cos(angle), cy + r * math.sin(angle))
 
 

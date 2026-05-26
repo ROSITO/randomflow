@@ -21,7 +21,7 @@ L’écran affiche `dot_number` points blancs sur fond sombre. Une fraction `dot
 - **Proportion** : `dot_coherence` × `dot_number` (arrondi).
 - **Mouvement** : vitesse constante, direction radiale **du centre vers l’extérieur** (comme s’ils partaient du centre).
 - **Position initiale** : répartis uniformément sur tout l’écran (déjà « déployés » à la frame 0).
-- **Respawn** : lorsqu’un point sort de l’écran, il réapparaît à une position aléatoire **dans le disque** `spawn_radius`, avec une nouvelle direction radiale vers l’extérieur.
+- **Respawn** : lorsqu’un point sort de l’écran, il réapparaît à une position aléatoire **dans le disque** `spawn_radius`, avec une distance au centre tirée uniformément entre 0 et `spawn_radius` (pour éviter une concentration visible sur le périmètre), puis une nouvelle direction radiale vers l’extérieur.
 - **Trajet** : du disque central jusqu’au **bord de l’écran**, sans être recyclé avant.
 
 ## Points excentriques — mode `brownian`
