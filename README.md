@@ -78,12 +78,14 @@ Exemple :
   "configs": [
     {
       "dot_size": 4,
-      "dot_speed": 2.0,
+      "dot_speed": 1.2,
       "dot_color": [255, 255, 255],
       "dot_number": 200,
       "dot_coherence": 0.8,
       "spawn_radius": 120,
       "brownian_sigma": 1.2,
+      "perspective_strength": 2.5,
+      "size_depth_scale": 0.35,
       "noise_mode": "brownian"
     }
   ],
@@ -101,6 +103,8 @@ Exemple :
 |-----------|------|
 | `dot_coherence` | Fraction de points en flux concentrique (0–1) |
 | `spawn_radius` | Disque central : spawn des points cohérents, disparition des points reverse |
+| `perspective_strength` | Intensité de l’effet profondeur (accélération vers les bords) |
+| `size_depth_scale` | Variation de taille selon la distance au centre |
 | `noise_mode` | `"brownian"` (marche aléatoire) ou `"reverse"` (bord → centre) |
 | `loop` | Nombre de passages sur toute la liste de configs |
 | `warmup_loops` | Frames de simulation avant affichage de chaque scène |

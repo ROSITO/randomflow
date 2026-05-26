@@ -19,10 +19,11 @@ L’écran affiche `dot_number` points blancs sur fond sombre. Une fraction `dot
 ## Points concentriques (cohérents)
 
 - **Proportion** : `dot_coherence` × `dot_number` (arrondi).
-- **Mouvement** : vitesse constante, direction radiale **du centre vers l’extérieur** (comme s’ils partaient du centre).
+- **Mouvement** : direction radiale **du centre vers l’extérieur** (comme s’ils partaient du centre), avec une vitesse qui augmente avec la distance au centre pour créer l’effet profondeur / “vitesse lumière”.
 - **Position initiale** : répartis uniformément sur tout l’écran (déjà « déployés » à la frame 0).
 - **Respawn** : lorsqu’un point sort de l’écran, il réapparaît à une position aléatoire **dans le disque** `spawn_radius`, avec une distance au centre tirée uniformément entre 0 et `spawn_radius` (pour éviter une concentration visible sur le périmètre), puis une nouvelle direction radiale vers l’extérieur.
 - **Trajet** : du disque central jusqu’au **bord de l’écran**, sans être recyclé avant.
+- **Profondeur** : `perspective_strength` contrôle l’accélération radiale, et `size_depth_scale` augmente légèrement la taille des points en périphérie.
 
 ## Points excentriques — mode `brownian`
 
@@ -33,7 +34,7 @@ L’écran affiche `dot_number` points blancs sur fond sombre. Une fraction `dot
 ## Points excentriques — mode `reverse`
 
 - **Naissance** : sur un **bord** aléatoire de l’écran.
-- **Mouvement** : ligne droite vers le centre (vitesse `dot_speed`).
+- **Mouvement** : ligne droite vers le centre, avec la même perspective inversée : rapide près du bord, plus lent près du centre.
 - **Disparition** : après avoir franchi le périmètre de `spawn_radius`, chaque point disparaît à une profondeur aléatoire **dans** ce disque, puis respawne sur un bord avec une nouvelle trajectoire vers le centre.
 
 ## Warmup

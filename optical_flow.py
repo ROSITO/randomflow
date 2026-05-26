@@ -101,6 +101,16 @@ def max_radial_distance(cx: float, cy: float, width: int, height: int) -> float:
     return min(cx, width - cx, cy, height - cy)
 
 
+def max_corner_distance(cx: float, cy: float, width: int, height: int) -> float:
+    """Distance du centre au coin le plus éloigné, pour normaliser l'effet de profondeur."""
+    return max(
+        math.hypot(cx, cy),
+        math.hypot(width - cx, cy),
+        math.hypot(cx, height - cy),
+        math.hypot(width - cx, height - cy),
+    )
+
+
 def random_point_on_screen_edge(width: int, height: int) -> tuple[float, float]:
     """Point aléatoire sur le périmètre de l'écran."""
     side = random.randint(0, 3)
@@ -141,6 +151,7 @@ class Dot:
         spawn_radius: float,
         brownian_sigma: float,
         noise_mode: str,
+        perspective_strength: float,
     ) -> bool:
         """Met à jour la position. Retourne True si le point est encore visible."""
         if not self.moving:
@@ -150,6 +161,9 @@ class Dot:
                 old_dx = self.x - center_x
                 old_dy = self.y - center_y
                 old_dist_sq = old_dx * old_dx + old_dy * old_dy
+                self._set_radial_velocity(
+                    center_x, center_y, width, height, perspective_strength, toward_center=True
+                )
                 self.x += self.vx
                 self.y += self.vy
                 dx = self.x - center_x
@@ -169,6 +183,9 @@ class Dot:
             if height > 0:
                 self.y = self.y % height
             return True
+        self._set_radial_velocity(
+            center_x, center_y, width, height, perspective_strength, toward_center=False
+        )
         self.x += self.vx
         self.y += self.vy
         # Concentrique : traverse tout l'écran, respawn dans spawn_radius seulement au bord
@@ -191,6 +208,33 @@ class Dot:
         self.vx = self.speed * math.cos(self.angle)
         self.vy = self.speed * math.sin(self.angle)
 
+    def _set_radial_velocity(
+        self,
+        center_x: float,
+        center_y: float,
+        width: int,
+        height: int,
+        perspective_strength: float,
+        toward_center: bool,
+    ) -> None:
+        """Met à jour la vitesse radiale : plus loin du centre = plus rapide."""
+        dx = self.x - center_x
+        dy = self.y - center_y
+        if dx * dx + dy * dy < 1e-6:
+            angle = random.uniform(0, 2 * math.pi)
+        elif toward_center:
+            angle = math.atan2(-dy, -dx)
+        else:
+            angle = math.atan2(dy, dx)
+
+        max_dist = max(max_corner_distance(center_x, center_y, width, height), 1.0)
+        normalized_distance = min(1.0, math.hypot(dx, dy) / max_dist)
+        speed_multiplier = 1.0 + perspective_strength * normalized_distance * normalized_distance
+        radial_speed = self.speed * speed_multiplier
+        self.angle = angle
+        self.vx = radial_speed * math.cos(angle)
+        self.vy = radial_speed * math.sin(angle)
+
     def _respawn_on_edge(
         self,
         width: int,
@@ -206,8 +250,21 @@ class Dot:
         self.vy = self.speed * math.sin(self.angle)
         self.reverse_vanish_radius = random.uniform(0, spawn_radius)
 
-    def draw(self, surface: "pygame.Surface", color: tuple, size: int) -> None:
-        pygame.draw.circle(surface, color, (int(self.x), int(self.y)), size)
+    def draw(
+        self,
+        surface: "pygame.Surface",
+        color: tuple,
+        size: int,
+        center_x: float,
+        center_y: float,
+        width: int,
+        height: int,
+        size_depth_scale: float,
+    ) -> None:
+        max_dist = max(max_corner_distance(center_x, center_y, width, height), 1.0)
+        normalized_distance = min(1.0, math.hypot(self.x - center_x, self.y - center_y) / max_dist)
+        draw_size = max(1, int(round(size * (1.0 + size_depth_scale * normalized_distance))))
+        pygame.draw.circle(surface, color, (int(self.x), int(self.y)), draw_size)
 
 
 def create_dots(
@@ -254,6 +311,7 @@ def _warmup_dots(
     spawn_radius: float,
     brownian_sigma: float,
     noise_mode: str,
+    perspective_strength: float,
     n_loops: int,
 ) -> None:
     """Simule n_loops mises à jour sans affichage pour stabiliser la distribution des points."""
@@ -262,7 +320,9 @@ def _warmup_dots(
     cx, cy = width / 2, height / 2
     for _ in range(n_loops):
         for dot in dots:
-            dot.update(width, height, cx, cy, spawn_radius, brownian_sigma, noise_mode)
+            dot.update(
+                width, height, cx, cy, spawn_radius, brownian_sigma, noise_mode, perspective_strength
+            )
         try:
             pygame.event.pump()
         except pygame.error:
@@ -283,6 +343,8 @@ def parse_single_config(config: dict, default_warmup_loops: int = 60) -> dict:
         "spawn_radius": max(1.0, float(config.get("spawn_radius", 80))),
         "brownian_sigma": max(0.0, float(config.get("brownian_sigma", 1.2))),
         "noise_mode": noise_mode,
+        "perspective_strength": max(0.0, float(config.get("perspective_strength", 4.0))),
+        "size_depth_scale": max(0.0, float(config.get("size_depth_scale", 1.2))),
         "warmup_loops": max(0, int(config.get("warmup_loops", default_warmup_loops))),
     }
 
@@ -334,9 +396,13 @@ def _run_loop(
     spawn_radius = params["spawn_radius"]
     brownian_sigma = params["brownian_sigma"]
     noise_mode = params["noise_mode"]
+    perspective_strength = params["perspective_strength"]
+    size_depth_scale = params["size_depth_scale"]
     warmup_loops = params["warmup_loops"]
     dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius, noise_mode)
-    _warmup_dots(dots, width, height, spawn_radius, brownian_sigma, noise_mode, warmup_loops)
+    _warmup_dots(
+        dots, width, height, spawn_radius, brownian_sigma, noise_mode, perspective_strength, warmup_loops
+    )
     config_start_time = pygame.time.get_ticks()
     bg_color = (20, 20, 25)
     running = True
@@ -369,13 +435,16 @@ def _run_loop(
                 screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
                 configure_event_queue()
                 dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius, noise_mode)
-                _warmup_dots(dots, width, height, spawn_radius, brownian_sigma, noise_mode, warmup_loops)
+                _warmup_dots(
+                    dots, width, height, spawn_radius, brownian_sigma, noise_mode,
+                    perspective_strength, warmup_loops,
+                )
 
         screen.fill(bg_color)
         cx, cy = width / 2, height / 2
         for dot in dots:
-            dot.update(width, height, cx, cy, spawn_radius, brownian_sigma, noise_mode)
-            dot.draw(screen, dot_color, dot_size)
+            dot.update(width, height, cx, cy, spawn_radius, brownian_sigma, noise_mode, perspective_strength)
+            dot.draw(screen, dot_color, dot_size, cx, cy, width, height, size_depth_scale)
         pygame.display.flip()
         clock.tick(60)
     return False, width, height

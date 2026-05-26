@@ -31,12 +31,14 @@ Chaque élément de `configs` est un objet avec les champs suivants :
 | Paramètre | Type | Défaut | Description |
 |-----------|------|--------|-------------|
 | `dot_size` | entier | `4` | Rayon des points en pixels. |
-| `dot_speed` | float | `2.0` | Vitesse des points en mouvement cohérent ou reverse (px / frame). |
+| `dot_speed` | float | `1.2` | Vitesse des points en mouvement cohérent ou reverse (px / frame). |
 | `dot_color` | `[R,G,B]` | `[255,255,255]` | Couleur RGB (0–255). Hex `#RRGGBB` accepté. |
 | `dot_number` | entier | `200` | Nombre total de points à l’écran. |
 | `dot_coherence` | float | `0.8` | Proportion de points **concentriques** (0.0–1.0). Le reste est du bruit (brownien ou reverse). |
 | `spawn_radius` | float | `80` | Rayon du disque central : zone d’apparition des points concentriques (distance au centre tirée uniformément dans ce rayon) et de disparition des points excentriques reverse. |
 | `brownian_sigma` | float | `1.2` | Écart-type du déplacement aléatoire par frame (mode `brownian` uniquement). |
+| `perspective_strength` | float | `2.5` | Intensité de l’effet profondeur : plus la valeur est grande, plus les points accélèrent loin du centre. |
+| `size_depth_scale` | float | `0.35` | Augmentation visuelle de la taille des points avec la distance au centre. |
 | `noise_mode` | string | `"brownian"` | Mode des points non cohérents : `"brownian"` ou `"reverse"`. |
 | `warmup_loops` | entier | (global) | Surcharge optionnelle du warmup pour cette scène seule. |
 
@@ -72,12 +74,14 @@ Chaque élément de `configs` est un objet avec les champs suivants :
   "configs": [
     {
       "dot_size": 4,
-      "dot_speed": 2.0,
+      "dot_speed": 1.2,
       "dot_color": [255, 255, 255],
       "dot_number": 200,
       "dot_coherence": 0.8,
       "spawn_radius": 120,
       "brownian_sigma": 1.2,
+      "perspective_strength": 2.5,
+      "size_depth_scale": 0.35,
       "noise_mode": "brownian"
     }
   ],
