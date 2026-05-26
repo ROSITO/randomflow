@@ -116,7 +116,7 @@ def random_point_on_screen_edge(width: int, height: int) -> tuple[float, float]:
 class Dot:
     """Un point : cohérent (centre → bord), brownien, ou inverse (bord → centre)."""
 
-    __slots__ = ("x", "y", "vx", "vy", "moving", "angle", "speed")
+    __slots__ = ("x", "y", "vx", "vy", "moving", "angle", "speed", "reverse_vanish_radius")
 
     def __init__(self, x: float, y: float, moving: bool, angle: float, speed: float):
         self.x = x
@@ -124,6 +124,7 @@ class Dot:
         self.moving = moving
         self.angle = angle
         self.speed = speed
+        self.reverse_vanish_radius = 0.0
         if moving:
             self.vx = speed * math.cos(angle)
             self.vy = speed * math.sin(angle)
@@ -144,14 +145,21 @@ class Dot:
         """Met à jour la position. Retourne True si le point est encore visible."""
         if not self.moving:
             if noise_mode == "reverse":
+                if self.reverse_vanish_radius <= 0 or self.reverse_vanish_radius > spawn_radius:
+                    self.reverse_vanish_radius = random.uniform(0, spawn_radius)
+                old_dx = self.x - center_x
+                old_dy = self.y - center_y
+                old_dist_sq = old_dx * old_dx + old_dy * old_dy
                 self.x += self.vx
                 self.y += self.vy
                 dx = self.x - center_x
                 dy = self.y - center_y
-                # Disparition aléatoire dans le disque spawn_radius, puis respawn au bord
-                if dx * dx + dy * dy <= spawn_radius * spawn_radius:
-                    self.x, self.y = random_point_in_circle(center_x, center_y, spawn_radius)
-                    self._respawn_on_edge(width, height, center_x, center_y)
+                # Franchit le périmètre puis disparaît à une profondeur aléatoire dans spawn_radius.
+                dist_sq = dx * dx + dy * dy
+                vanish_sq = self.reverse_vanish_radius * self.reverse_vanish_radius
+                crossed_center = old_dist_sq <= spawn_radius * spawn_radius and dist_sq > old_dist_sq
+                if dist_sq <= vanish_sq or crossed_center:
+                    self._respawn_on_edge(width, height, center_x, center_y, spawn_radius)
                 return True
             # Mouvement brownien (bruit) pour les points non-cohérents
             self.x += random.gauss(0, brownian_sigma)
@@ -183,12 +191,20 @@ class Dot:
         self.vx = self.speed * math.cos(self.angle)
         self.vy = self.speed * math.sin(self.angle)
 
-    def _respawn_on_edge(self, width: int, height: int, center_x: float, center_y: float) -> None:
+    def _respawn_on_edge(
+        self,
+        width: int,
+        height: int,
+        center_x: float,
+        center_y: float,
+        spawn_radius: float,
+    ) -> None:
         """Replace le point excentrique sur le bord de l'écran, vitesse vers le centre."""
         self.x, self.y = random_point_on_screen_edge(width, height)
         self.angle = math.atan2(center_y - self.y, center_x - self.x)
         self.vx = self.speed * math.cos(self.angle)
         self.vy = self.speed * math.sin(self.angle)
+        self.reverse_vanish_radius = random.uniform(0, spawn_radius)
 
     def draw(self, surface: "pygame.Surface", color: tuple, size: int) -> None:
         pygame.draw.circle(surface, color, (int(self.x), int(self.y)), size)
@@ -221,11 +237,8 @@ def create_dots(
             angle = math.atan2(y - cy, x - cx)
             dot = Dot(x, y, moving=True, angle=angle, speed=dot_speed)
         elif noise_mode == "reverse":
-            ex, ey = random_point_on_screen_edge(width, height)
-            angle = math.atan2(cy - ey, cx - ex)
-            dot = Dot(ex, ey, moving=False, angle=angle, speed=dot_speed)
-            dot.vx = dot_speed * math.cos(angle)
-            dot.vy = dot_speed * math.sin(angle)
+            dot = Dot(0.0, 0.0, moving=False, angle=0.0, speed=dot_speed)
+            dot._respawn_on_edge(width, height, cx, cy, spawn_radius)
         else:
             dot = Dot(x, y, moving=False, angle=0.0, speed=dot_speed)
         dots.append(dot)

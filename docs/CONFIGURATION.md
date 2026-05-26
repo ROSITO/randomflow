@@ -43,7 +43,7 @@ Chaque élément de `configs` est un objet avec les champs suivants :
 ### `noise_mode`
 
 - **`brownian`** : marche aléatoire (bruit), wrap toroidal aux bords.
-- **`reverse`** : naissance sur le bord de l’écran, mouvement radial vers le centre ; disparition aléatoire dans `spawn_radius`, puis respawn au bord.
+- **`reverse`** : naissance sur le bord de l’écran, mouvement radial vers le centre ; franchit le périmètre de `spawn_radius`, disparaît à une profondeur aléatoire dans cette aire, puis respawn au bord.
 
 ## Fichier de sortie (`responses.json`)
 

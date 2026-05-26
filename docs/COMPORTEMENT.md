@@ -34,7 +34,7 @@ L’écran affiche `dot_number` points blancs sur fond sombre. Une fraction `dot
 
 - **Naissance** : sur un **bord** aléatoire de l’écran.
 - **Mouvement** : ligne droite vers le centre (vitesse `dot_speed`).
-- **Disparition** : en entrant dans le disque `spawn_radius`, le point est placé à une position aléatoire **dans** ce disque, puis immédiatement respawné sur un bord avec une nouvelle trajectoire vers le centre.
+- **Disparition** : après avoir franchi le périmètre de `spawn_radius`, chaque point disparaît à une profondeur aléatoire **dans** ce disque, puis respawne sur un bord avec une nouvelle trajectoire vers le centre.
 
 ## Warmup
 
