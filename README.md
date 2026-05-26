@@ -12,7 +12,6 @@ Stimulus de **flux optique** paramétrable : points lumineux sur fond sombre, av
 ### Avec uv (recommandé)
 
 ```bash
-git clone https://github.com/ROSITO/randomflow.git
 cd randomflow
 uv sync
 ```
@@ -22,6 +21,24 @@ uv sync
 ```bash
 pip install -r requirements.txt
 ```
+
+### Windows
+
+Si `python` n'est pas reconnu, utiliser le lanceur Python Windows :
+
+```bat
+py -m pip install -r requirements.txt
+py optical_flow.py
+```
+
+Avec `uv`, rester dans le même dossier et lancer :
+
+```bat
+uv sync
+uv run optical-flow
+```
+
+Ne pas mélanger les environnements : si le script est lancé avec `py optical_flow.py`, installer `pygame` avec `py -m pip install -r requirements.txt`. Si le script est lancé avec `uv run optical-flow`, installer avec `uv sync`.
 
 ## Lancement
 

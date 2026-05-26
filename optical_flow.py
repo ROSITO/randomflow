@@ -17,6 +17,8 @@ except ImportError:
     print("Installez pygame : pip install pygame")
     sys.exit(1)
 
+ALLOWED_EVENTS = (pygame.QUIT, pygame.KEYDOWN, pygame.VIDEORESIZE)
+
 
 def load_config(config_path: str) -> dict:
     """Charge les paramètres depuis le fichier JSON (objet unique)."""
@@ -49,6 +51,37 @@ def parse_color(color) -> tuple:
         color = color.lstrip("#")
         return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
     return (255, 255, 255)
+
+
+def configure_event_queue() -> None:
+    """Filtre les événements utiles pour éviter certains bugs Pygame/Windows."""
+    pygame.event.set_blocked(None)
+    pygame.event.set_allowed(ALLOWED_EVENTS)
+
+
+def get_pygame_events() -> list:
+    """Récupère les événements de façon robuste, notamment sous Windows."""
+    try:
+        return list(pygame.event.get(ALLOWED_EVENTS))
+    except (pygame.error, SystemError):
+        # Certaines combinaisons Windows/Pygame peuvent lever un SystemError
+        # pendant la conversion d'événements inutiles. On vide la file et on
+        # continue la frame suivante.
+        try:
+            pygame.event.clear()
+        except pygame.error:
+            pass
+        return []
+
+
+def key_matches(event: "pygame.event.Event", key_name: str | None) -> bool:
+    """Compare un KEYDOWN Pygame à une touche configurable ('b', 'm', etc.)."""
+    if not key_name:
+        return False
+    try:
+        return event.key == pygame.key.key_code(key_name.lower())
+    except ValueError:
+        return getattr(event, "unicode", "").lower() == key_name.lower()
 
 
 def random_point_in_circle(cx: float, cy: float, radius: float) -> tuple[float, float]:
@@ -212,7 +245,10 @@ def _warmup_dots(
     for _ in range(n_loops):
         for dot in dots:
             dot.update(width, height, cx, cy, spawn_radius, brownian_sigma, noise_mode)
-        pygame.event.pump()
+        try:
+            pygame.event.pump()
+        except pygame.error:
+            return
 
 
 def parse_single_config(config: dict, default_warmup_loops: int = 60) -> dict:
@@ -244,6 +280,7 @@ def run_optical_flow(config_path: str = "config.json") -> None:
     info = pygame.display.Info()
     width, height = info.current_w // 2, info.current_h // 2
     pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    configure_event_queue()
     default_warmup = max(0, int(config.get("warmup_loops", 60)))
     params = parse_single_config(config, default_warmup_loops=default_warmup)
     _run_loop(
@@ -287,13 +324,13 @@ def _run_loop(
     running = True
     clock = pygame.time.Clock()
     while running:
-        for event in pygame.event.get():
+        for event in get_pygame_events():
             if event.type == pygame.QUIT:
                 return False, width, height
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return False, width, height
-                if key_noise and event.unicode.lower() == key_noise and results is not None and config is not None:
+                if key_matches(event, key_noise) and results is not None and config is not None:
                     response_time_ms = pygame.time.get_ticks() - config_start_time
                     results.append({
                         "config": config,
@@ -301,7 +338,7 @@ def _run_loop(
                         "response_time_ms": response_time_ms,
                     })
                     return True, width, height  # passer à la config suivante
-                if key_motion and event.unicode.lower() == key_motion and results is not None and config is not None:
+                if key_matches(event, key_motion) and results is not None and config is not None:
                     response_time_ms = pygame.time.get_ticks() - config_start_time
                     results.append({
                         "config": config,
@@ -312,6 +349,7 @@ def _run_loop(
             if event.type == pygame.VIDEORESIZE:
                 width, height = event.w, event.h
                 screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+                configure_event_queue()
                 dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius, noise_mode)
                 _warmup_dots(dots, width, height, spawn_radius, brownian_sigma, noise_mode, warmup_loops)
 
@@ -338,6 +376,7 @@ def run_session(config_path: str = "config.json") -> None:
     width = info.current_w // 2
     height = info.current_h // 2
     screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    configure_event_queue()
     pygame.display.set_caption("Flux optique — B=bruit, M=mouvement, Échap=quitter")
 
     results: list[dict] = []
