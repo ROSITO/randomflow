@@ -30,8 +30,8 @@ def load_config(config_path: str) -> dict:
         return json.load(f)
 
 
-def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, int]:
-    """Charge la liste de configs + options (touches, fichier de sortie, loop, warmup)."""
+def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, int, dict]:
+    """Charge la liste de configs + options de session."""
     data = load_config(config_path)
     configs = data.get("configs", [])
     if not configs:
@@ -41,7 +41,15 @@ def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, 
     output_file = str(data.get("output_file", "responses.json"))
     loop = max(1, int(data.get("loop", 1)))
     warmup_loops = max(0, int(data.get("warmup_loops", 60)))
-    return configs, key_noise, key_motion, output_file, loop, warmup_loops
+    fixation_min_ms = max(0, int(data.get("fixation_min_ms", 500)))
+    fixation_timeout_ms = max(fixation_min_ms, int(data.get("fixation_timeout_ms", 5000)))
+    fixation = {
+        "min_ms": fixation_min_ms,
+        "timeout_ms": fixation_timeout_ms,
+        "size": max(1, int(data.get("fixation_size", 5))),
+        "color": parse_color(data.get("fixation_color", [255, 255, 255])),
+    }
+    return configs, key_noise, key_motion, output_file, loop, warmup_loops, fixation
 
 
 def timestamped_output_path(config_path: str, output_file: str) -> Path:
@@ -459,11 +467,52 @@ def _run_loop(
     return False, width, height
 
 
+def _run_fixation_screen(
+    width: int,
+    height: int,
+    fixation_min_ms: int,
+    fixation_timeout_ms: int,
+    fixation_size: int,
+    fixation_color: tuple,
+) -> tuple[bool, int, int, int]:
+    """Affiche un point de fixation entre deux stimuli.
+
+    Retourne (running, width, height, duration_ms). Espace est accepté seulement
+    après fixation_min_ms ; sinon passage automatique à fixation_timeout_ms.
+    """
+    screen = pygame.display.get_surface()
+    clock = pygame.time.Clock()
+    start_time = pygame.time.get_ticks()
+
+    while True:
+        elapsed_ms = pygame.time.get_ticks() - start_time
+        if elapsed_ms >= fixation_timeout_ms:
+            return True, width, height, elapsed_ms
+
+        for event in get_pygame_events():
+            if event.type == pygame.QUIT:
+                return False, width, height, elapsed_ms
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False, width, height, elapsed_ms
+                if event.key == pygame.K_SPACE and elapsed_ms >= fixation_min_ms:
+                    return True, width, height, elapsed_ms
+            if event.type == pygame.VIDEORESIZE:
+                width, height = event.w, event.h
+                screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+                configure_event_queue()
+
+        screen.fill((0, 0, 0))
+        pygame.draw.circle(screen, fixation_color, (width // 2, height // 2), fixation_size)
+        pygame.display.flip()
+        clock.tick(60)
+
+
 def run_session(config_path: str = "config.json") -> None:
     """Joue la liste de configs dans un ordre aléatoire. Touche B = bruit, M = mouvement.
     Enregistre les réponses dans le fichier JSON de sortie. Transition immédiate à la config suivante.
     """
-    configs, key_noise, key_motion, output_file, loop, default_warmup = load_config_list(config_path)
+    configs, key_noise, key_motion, output_file, loop, default_warmup, fixation = load_config_list(config_path)
     configs = list(configs) * loop  # répéter la liste "loop" fois
     random.shuffle(configs)
 
@@ -494,6 +543,17 @@ def run_session(config_path: str = "config.json") -> None:
         )
         if running:
             index += 1
+            if index < len(configs):
+                running, width, height, fixation_duration_ms = _run_fixation_screen(
+                    width=width,
+                    height=height,
+                    fixation_min_ms=fixation["min_ms"],
+                    fixation_timeout_ms=fixation["timeout_ms"],
+                    fixation_size=fixation["size"],
+                    fixation_color=fixation["color"],
+                )
+                if results:
+                    results[-1]["fixation_after_ms"] = fixation_duration_ms
 
     # Écrire le fichier de sortie
     out_path = timestamped_output_path(config_path, output_file)

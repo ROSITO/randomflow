@@ -101,5 +101,9 @@
   "key_motion": "m",
   "output_file": "responses.json",
   "loop": 1,
-  "warmup_loops": 200
+  "warmup_loops": 200,
+  "fixation_min_ms": 500,
+  "fixation_timeout_ms": 5000,
+  "fixation_size": 5,
+  "fixation_color": [255, 255, 255]
 }

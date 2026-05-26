@@ -11,7 +11,11 @@ Fichier principal : `config.json` à la racine du projet.
   "key_motion": "m",
   "output_file": "responses.json",
   "loop": 1,
-  "warmup_loops": 120
+  "warmup_loops": 120,
+  "fixation_min_ms": 500,
+  "fixation_timeout_ms": 5000,
+  "fixation_size": 5,
+  "fixation_color": [255, 255, 255]
 }
 ```
 
@@ -23,6 +27,10 @@ Fichier principal : `config.json` à la racine du projet.
 | `output_file` | string | `"responses.json"` | Base du fichier JSON de sortie (relatif au dossier du config). Un timestamp est ajouté automatiquement. |
 | `loop` | entier | `1` | Nombre de passages complets sur la liste `configs` (ordre mélangé à chaque lancement). |
 | `warmup_loops` | entier | `60` | Nombre de mises à jour de simulation **sans affichage** avant chaque scène. |
+| `fixation_min_ms` | entier | `500` | Temps minimum du point de fixation entre deux stimuli. La barre d’espace n’est acceptée qu’après ce délai. |
+| `fixation_timeout_ms` | entier | `5000` | Durée maximum du point de fixation avant passage automatique au stimulus suivant. |
+| `fixation_size` | entier | `5` | Rayon du point de fixation en pixels. |
+| `fixation_color` | `[R,G,B]` | `[255,255,255]` | Couleur RGB du point de fixation. |
 
 ## Paramètres par scène (`configs[]`)
 
@@ -74,6 +82,7 @@ Cela évite d’écraser les réponses des sessions précédentes.
 | `config` | Copie exacte de la config présentée. |
 | `response` | `"noise"` ou `"motion"`. |
 | `response_time_ms` | Délai entre le début de la scène (après warmup) et la touche pressée. |
+| `fixation_after_ms` | Durée réelle de fixation après cet essai, si un stimulus suivant existait. |
 
 ## Exemple minimal
 
@@ -97,6 +106,10 @@ Cela évite d’écraser les réponses des sessions précédentes.
   "key_motion": "m",
   "output_file": "responses.json",
   "loop": 1,
-  "warmup_loops": 120
+  "warmup_loops": 120,
+  "fixation_min_ms": 500,
+  "fixation_timeout_ms": 5000,
+  "fixation_size": 5,
+  "fixation_color": [255, 255, 255]
 }
 ```

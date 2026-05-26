@@ -59,6 +59,7 @@ python optical_flow.py
 |--------|--------|
 | **B** (défaut) | Réponse : **bruit** — passage à la scène suivante |
 | **M** (défaut) | Réponse : **mouvement** — passage à la scène suivante |
+| **Espace** | Pendant la fixation : passer au stimulus suivant après le temps minimum |
 | **Échap** | Quitter et enregistrer les réponses déjà données |
 | Fermer la fenêtre | Quitter |
 
@@ -93,7 +94,11 @@ Exemple :
   "key_motion": "m",
   "output_file": "responses.json",
   "loop": 1,
-  "warmup_loops": 120
+  "warmup_loops": 120,
+  "fixation_min_ms": 500,
+  "fixation_timeout_ms": 5000,
+  "fixation_size": 5,
+  "fixation_color": [255, 255, 255]
 }
 ```
 
@@ -108,6 +113,8 @@ Exemple :
 | `noise_mode` | `"brownian"` (marche aléatoire) ou `"reverse"` (bord → centre) |
 | `loop` | Nombre de passages sur toute la liste de configs |
 | `warmup_loops` | Frames de simulation avant affichage de chaque scène |
+| `fixation_min_ms` | Temps minimum du point de fixation entre deux stimuli |
+| `fixation_timeout_ms` | Timeout du point de fixation avant passage automatique |
 
 Documentation détaillée :
 
@@ -130,7 +137,8 @@ Il contient :
     {
       "config": { "...": "..." },
       "response": "motion",
-      "response_time_ms": 2340
+      "response_time_ms": 2340,
+      "fixation_after_ms": 850
     }
   ]
 }
