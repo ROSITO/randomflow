@@ -59,7 +59,7 @@ python optical_flow.py
 |--------|--------|
 | **B** (défaut) | Réponse : **bruit** — passage à la scène suivante |
 | **M** (défaut) | Réponse : **mouvement** — passage à la scène suivante |
-| **Espace** | Pendant la fixation : passer au stimulus suivant après le temps minimum |
+| **Espace** | Fixation initiale : démarrer la manip ; entre stimuli : passer après le temps minimum |
 | **Échap** | Quitter et enregistrer les réponses déjà données |
 | Fermer la fenêtre | Quitter |
 

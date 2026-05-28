@@ -43,7 +43,7 @@ Avant l’affichage de chaque scène, la simulation exécute `warmup_loops` mise
 
 ## Fixation
 
-Entre deux stimuli, un écran noir avec un point de fixation central est affiché.
+Un écran noir avec un point de fixation central est affiché au début de la session, puis entre deux stimuli.
 
 - `fixation_min_ms` : durée minimale. La barre d’espace est ignorée avant cette durée.
 - `fixation_timeout_ms` : durée maximum avant passage automatique au stimulus suivant.
@@ -53,5 +53,6 @@ Entre deux stimuli, un écran noir avec un point de fixation central est affich�
 
 1. Les configs sont mélangées aléatoirement (`loop` répète la liste entière).
 2. L’utilisateur observe le flux et appuie sur **bruit** ou **mouvement**.
-3. Si un stimulus suivant existe, affichage du point de fixation ; après le temps minimum, **Espace** passe à la suite, sinon timeout automatique.
-4. À la fin (ou sur Échap), écriture du fichier de réponses horodaté.
+3. Avant le premier stimulus : point de fixation sans timeout, passage uniquement avec **Espace**.
+4. Entre deux stimuli : point de fixation avec `fixation_min_ms` et timeout `fixation_timeout_ms` ; **Espace** est accepté après la durée minimale.
+5. À la fin (ou sur Échap), écriture du fichier de réponses horodaté.

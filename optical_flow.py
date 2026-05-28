@@ -471,14 +471,15 @@ def _run_fixation_screen(
     width: int,
     height: int,
     fixation_min_ms: int,
-    fixation_timeout_ms: int,
+    fixation_timeout_ms: int | None,
     fixation_size: int,
     fixation_color: tuple,
 ) -> tuple[bool, int, int, int]:
     """Affiche un point de fixation entre deux stimuli.
 
-    Retourne (running, width, height, duration_ms). Espace est accepté seulement
-    après fixation_min_ms ; sinon passage automatique à fixation_timeout_ms.
+    Retourne (running, width, height, duration_ms).
+    Espace est accepté seulement après fixation_min_ms.
+    Si fixation_timeout_ms est None, pas de passage automatique.
     """
     screen = pygame.display.get_surface()
     clock = pygame.time.Clock()
@@ -486,7 +487,7 @@ def _run_fixation_screen(
 
     while True:
         elapsed_ms = pygame.time.get_ticks() - start_time
-        if elapsed_ms >= fixation_timeout_ms:
+        if fixation_timeout_ms is not None and elapsed_ms >= fixation_timeout_ms:
             return True, width, height, elapsed_ms
 
         for event in get_pygame_events():
@@ -527,6 +528,16 @@ def run_session(config_path: str = "config.json") -> None:
     results: list[dict] = []
     index = 0
     running = True
+
+    # Fixation initiale : uniquement Espace, sans timeout.
+    running, width, height, _ = _run_fixation_screen(
+        width=width,
+        height=height,
+        fixation_min_ms=0,
+        fixation_timeout_ms=None,
+        fixation_size=fixation["size"],
+        fixation_color=fixation["color"],
+    )
 
     while running and index < len(configs):
         config = configs[index]
