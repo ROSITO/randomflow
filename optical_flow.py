@@ -30,7 +30,7 @@ def load_config(config_path: str) -> dict:
         return json.load(f)
 
 
-def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, int, dict]:
+def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, int, dict, bool]:
     """Charge la liste de configs + options de session."""
     data = load_config(config_path)
     configs = data.get("configs", [])
@@ -43,13 +43,36 @@ def load_config_list(config_path: str) -> tuple[list[dict], str, str, str, int, 
     warmup_loops = max(0, int(data.get("warmup_loops", 60)))
     fixation_min_ms = max(0, int(data.get("fixation_min_ms", 500)))
     fixation_timeout_ms = max(fixation_min_ms, int(data.get("fixation_timeout_ms", 5000)))
+    fullscreen = bool(data.get("fullscreen", True))
     fixation = {
         "min_ms": fixation_min_ms,
         "timeout_ms": fixation_timeout_ms,
         "size": max(1, int(data.get("fixation_size", 5))),
         "color": parse_color(data.get("fixation_color", [255, 255, 255])),
     }
-    return configs, key_noise, key_motion, output_file, loop, warmup_loops, fixation
+    return configs, key_noise, key_motion, output_file, loop, warmup_loops, fixation, fullscreen
+
+
+def create_display(fullscreen: bool = True) -> tuple[pygame.Surface, int, int]:
+    """Crée la fenêtre et retourne (surface, largeur, hauteur) en pixels utilisables."""
+    pygame.init()
+    if fullscreen:
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    else:
+        info = pygame.display.Info()
+        screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.RESIZABLE)
+    width, height = screen.get_size()
+    return screen, width, height
+
+
+def set_display_size(width: int, height: int, fullscreen: bool) -> tuple[pygame.Surface, int, int]:
+    """Redimensionne la fenêtre et retourne la taille réelle de la surface."""
+    if fullscreen:
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    else:
+        screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    configure_event_queue()
+    return screen, *screen.get_size()
 
 
 def timestamped_output_path(config_path: str, output_file: str) -> Path:
@@ -373,10 +396,8 @@ def run_optical_flow(config_path: str = "config.json") -> None:
         run_session(config_path)
         return
     # Ancien format: un seul objet de config
-    pygame.init()
-    info = pygame.display.Info()
-    width, height = info.current_w // 2, info.current_h // 2
-    pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    fullscreen = bool(config.get("fullscreen", False))
+    screen, width, height = create_display(fullscreen=fullscreen)
     configure_event_queue()
     default_warmup = max(0, int(config.get("warmup_loops", 60)))
     params = parse_single_config(config, default_warmup_loops=default_warmup)
@@ -389,6 +410,7 @@ def run_optical_flow(config_path: str = "config.json") -> None:
         key_motion=None,
         results=None,
         output_file=None,
+        fullscreen=fullscreen,
     )
     pygame.quit()
 
@@ -402,9 +424,12 @@ def _run_loop(
     key_motion: str | None,
     results: list | None,
     output_file: str | None,
+    fullscreen: bool = False,
 ) -> tuple[bool, int, int]:
     """Boucle d'affichage pour une config. Retourne (running, width, height)."""
     screen = pygame.display.get_surface()
+    if screen is not None:
+        width, height = screen.get_size()
     dot_size = params["dot_size"]
     dot_color = params["dot_color"]
     dot_number = params["dot_number"]
@@ -447,10 +472,8 @@ def _run_loop(
                         "response_time_ms": response_time_ms,
                     })
                     return True, width, height
-            if event.type == pygame.VIDEORESIZE:
-                width, height = event.w, event.h
-                screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-                configure_event_queue()
+            if event.type == pygame.VIDEORESIZE and not fullscreen:
+                screen, width, height = set_display_size(event.w, event.h, fullscreen=False)
                 dots = create_dots(width, height, dot_number, dot_coherence, dot_speed, spawn_radius, noise_mode)
                 _warmup_dots(
                     dots, width, height, spawn_radius, brownian_sigma, noise_mode,
@@ -474,6 +497,7 @@ def _run_fixation_screen(
     fixation_timeout_ms: int | None,
     fixation_size: int,
     fixation_color: tuple,
+    fullscreen: bool = False,
 ) -> tuple[bool, int, int, int]:
     """Affiche un point de fixation entre deux stimuli.
 
@@ -482,6 +506,8 @@ def _run_fixation_screen(
     Si fixation_timeout_ms est None, pas de passage automatique.
     """
     screen = pygame.display.get_surface()
+    if screen is not None:
+        width, height = screen.get_size()
     clock = pygame.time.Clock()
     start_time = pygame.time.get_ticks()
 
@@ -498,10 +524,8 @@ def _run_fixation_screen(
                     return False, width, height, elapsed_ms
                 if event.key == pygame.K_SPACE and elapsed_ms >= fixation_min_ms:
                     return True, width, height, elapsed_ms
-            if event.type == pygame.VIDEORESIZE:
-                width, height = event.w, event.h
-                screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-                configure_event_queue()
+            if event.type == pygame.VIDEORESIZE and not fullscreen:
+                screen, width, height = set_display_size(event.w, event.h, fullscreen=False)
 
         screen.fill((0, 0, 0))
         pygame.draw.circle(screen, fixation_color, (width // 2, height // 2), fixation_size)
@@ -513,15 +537,13 @@ def run_session(config_path: str = "config.json") -> None:
     """Joue la liste de configs dans un ordre aléatoire. Touche B = bruit, M = mouvement.
     Enregistre les réponses dans le fichier JSON de sortie. Transition immédiate à la config suivante.
     """
-    configs, key_noise, key_motion, output_file, loop, default_warmup, fixation = load_config_list(config_path)
+    configs, key_noise, key_motion, output_file, loop, default_warmup, fixation, fullscreen = load_config_list(
+        config_path
+    )
     configs = list(configs) * loop  # répéter la liste "loop" fois
     random.shuffle(configs)
 
-    pygame.init()
-    info = pygame.display.Info()
-    width = info.current_w // 2
-    height = info.current_h // 2
-    screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    screen, width, height = create_display(fullscreen=fullscreen)
     configure_event_queue()
     pygame.display.set_caption("Flux optique — B=bruit, M=mouvement, Échap=quitter")
 
@@ -537,6 +559,7 @@ def run_session(config_path: str = "config.json") -> None:
         fixation_timeout_ms=None,
         fixation_size=fixation["size"],
         fixation_color=fixation["color"],
+        fullscreen=fullscreen,
     )
 
     while running and index < len(configs):
@@ -551,6 +574,7 @@ def run_session(config_path: str = "config.json") -> None:
             key_motion=key_motion,
             results=results,
             output_file=output_file,
+            fullscreen=fullscreen,
         )
         if running:
             index += 1
@@ -562,6 +586,7 @@ def run_session(config_path: str = "config.json") -> None:
                     fixation_timeout_ms=fixation["timeout_ms"],
                     fixation_size=fixation["size"],
                     fixation_color=fixation["color"],
+                    fullscreen=fullscreen,
                 )
                 if results:
                     results[-1]["fixation_after_ms"] = fixation_duration_ms
